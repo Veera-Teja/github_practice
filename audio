@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Audio Call App</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#f1f5f9;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    margin:0;
+}
+
+.container{
+    width:500px;
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+h2{
+    text-align:center;
+}
+
+button{
+    padding:10px 15px;
+    margin:5px 0;
+    border:none;
+    background:#2563eb;
+    color:white;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+textarea{
+    width:100%;
+    height:80px;
+    margin-top:5px;
+}
+
+audio{
+    width:100%;
+    margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h2>Audio Call (WebRTC)</h2>
+
+<button onclick="startCall()">Start Call (Create Offer)</button>
+
+<label>Offer</label>
+<textarea id="offerBox"></textarea>
+
+<button onclick="createAnswer()">Create Answer</button>
+
+<label>Answer</label>
+<textarea id="answerBox"></textarea>
+
+<button onclick="setAnswer()">Set Answer</button>
+
+<audio id="remoteAudio" autoplay></audio>
+
+</div>
+
+<script>
+
+let localStream;
+let pc;
+
+const remoteAudio = document.getElementById("remoteAudio");
+
+const config = {
+    iceServers: [
+        { urls: "stun:stun.l.google.com:19302" }
+    ]
+};
+
+async function startCall(){
+
+    pc = new RTCPeerConnection(config);
+
+    localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+
+    localStream.getTracks().forEach(track=>{
+        pc.addTrack(track, localStream);
+    });
+
+    pc.ontrack = e =>{
+        remoteAudio.srcObject = e.streams[0];
+    };
+
+    pc.onicecandidate = e =>{
+        if(!e.candidate){
+            document.getElementById("offerBox").value =
+                JSON.stringify(pc.localDescription);
+        }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+}
+
+async function createAnswer(){
+
+    if(!pc){
+        pc = new RTCPeerConnection(config);
+
+        pc.ontrack = e =>{
+            remoteAudio.srcObject = e.streams[0];
+        };
+
+        pc.onicecandidate = e =>{
+            if(!e.candidate){
+                document.getElementById("answerBox").value =
+                    JSON.stringify(pc.localDescription);
+            }
+        };
+
+        localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+
+        localStream.getTracks().forEach(track=>{
+            pc.addTrack(track, localStream);
+        });
+    }
+
+    const offerText = document.getElementById("offerBox").value;
+    const offer = JSON.parse(offerText);
+
+    await pc.setRemoteDescription(offer);
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+}
+
+async function setAnswer(){
+
+    const answerText = document.getElementById("answerBox").value;
+    const answer = JSON.parse(answerText);
+
+    await pc.setRemoteDescription(answer);
+}
+
+</script>
+
+</body>
+</html>
+
