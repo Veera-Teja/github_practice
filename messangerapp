@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Messenger App</title>
+<style>
+*{
+    box-sizing:border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body{
+    margin:0;
+    height:100vh;
+    background:#e5e7eb;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.app{
+    width:900px;
+    height:550px;
+    background:white;
+    display:flex;
+    border-radius:10px;
+    overflow:hidden;
+}
+
+/* Sidebar */
+.sidebar{
+    width:260px;
+    background:#1f2933;
+    color:white;
+    padding:10px;
+}
+
+.sidebar h2{
+    margin:10px 5px;
+}
+
+.contact{
+    padding:10px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.contact:hover{
+    background:#374151;
+}
+
+.contact.active{
+    background:#2563eb;
+}
+
+/* Chat area */
+.chat-area{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+/* Header */
+.chat-header{
+    padding:15px;
+    background:#f3f4f6;
+    font-weight:bold;
+}
+
+/* Messages */
+.messages{
+    flex:1;
+    padding:15px;
+    overflow-y:auto;
+    background:#f9fafb;
+}
+
+.message{
+    max-width:60%;
+    margin-bottom:10px;
+    padding:10px;
+    border-radius:8px;
+    font-size:14px;
+}
+
+.sent{
+    background:#2563eb;
+    color:white;
+    margin-left:auto;
+}
+
+.received{
+    background:#e5e7eb;
+    color:black;
+}
+
+.time{
+    font-size:10px;
+    opacity:0.7;
+    margin-top:4px;
+    text-align:right;
+}
+
+/* Input area */
+.input-area{
+    display:flex;
+    padding:10px;
+    border-top:1px solid #ddd;
+}
+
+.input-area input{
+    flex:1;
+    padding:10px;
+    border-radius:20px;
+    border:1px solid #ccc;
+    outline:none;
+}
+
+.input-area button{
+    margin-left:10px;
+    padding:10px 18px;
+    border:none;
+    background:#2563eb;
+    color:white;
+    border-radius:20px;
+    cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Chats</h2>
+        <div id="contacts"></div>
+    </div>
+
+    <!-- Chat area -->
+    <div class="chat-area">
+
+        <div class="chat-header" id="chatHeader">
+            Select a chat
+        </div>
+
+        <div class="messages" id="messages"></div>
+
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Type a message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+
+const contactList = ["Ravi", "Sita", "Rahul", "Priya"];
+
+let currentUser = null;
+
+const contactsDiv = document.getElementById("contacts");
+const messagesDiv = document.getElementById("messages");
+const header = document.getElementById("chatHeader");
+
+function loadContacts(){
+    contactsDiv.innerHTML = "";
+    contactList.forEach(name=>{
+        const div = document.createElement("div");
+        div.className = "contact";
+        div.textContent = name;
+        div.onclick = () => selectChat(name);
+        contactsDiv.appendChild(div);
+    });
+}
+
+function selectChat(name){
+    currentUser = name;
+    header.textContent = name;
+
+    document.querySelectorAll(".contact").forEach(c=>{
+        c.classList.remove("active");
+        if(c.textContent === name){
+            c.classList.add("active");
+        }
+    });
+
+    loadMessages();
+}
+
+function getChatKey(){
+    return "chat_" + currentUser;
+}
+
+function loadMessages(){
+    messagesDiv.innerHTML = "";
+
+    if(!currentUser) return;
+
+    const data = JSON.parse(localStorage.getItem(getChatKey())) || [];
+
+    data.forEach(msg=>{
+        addMessageToUI(msg.text, msg.type, msg.time);
+    });
+
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function addMessageToUI(text, type, time){
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "message " + type;
+
+    const t = document.createElement("div");
+    t.textContent = text;
+
+    const timeDiv = document.createElement("div");
+    timeDiv.className = "time";
+    timeDiv.textContent = time;
+
+    msgDiv.appendChild(t);
+    msgDiv.appendChild(timeDiv);
+
+    messagesDiv.appendChild(msgDiv);
+}
+
+function sendMessage(){
+
+    if(!currentUser){
+        alert("Please select a chat first");
+        return;
+    }
+
+    const input = document.getElementById("messageInput");
+    const text = input.value.trim();
+
+    if(text === "") return;
+
+    const time = new Date().toLocaleTimeString();
+
+    const chatData = JSON.parse(localStorage.getItem(getChatKey())) || [];
+
+    chatData.push({
+        text:text,
+        type:"sent",
+        time:time
+    });
+
+    localStorage.setItem(getChatKey(), JSON.stringify(chatData));
+
+    addMessageToUI(text,"sent",time);
+
+    input.value = "";
+
+    // Simple auto-reply (demo functionality)
+    setTimeout(()=>{
+        autoReply();
+    },800);
+
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function autoReply(){
+
+    if(!currentUser) return;
+
+    const replies = [
+        "Okay 👍",
+        "Got it!",
+        "Sounds good.",
+        "I will check and tell you.",
+        "Thanks for the update."
+    ];
+
+    const reply = replies[Math.floor(Math.random()*replies.length)];
+    const time = new Date().toLocaleTimeString();
+
+    const chatData = JSON.parse(localStorage.getItem(getChatKey())) || [];
+
+    chatData.push({
+        text:reply,
+        type:"received",
+        time:time
+    });
+
+    localStorage.setItem(getChatKey(), JSON.stringify(chatData));
+
+    addMessageToUI(reply,"received",time);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// Send using Enter key
+document.getElementById("messageInput").addEventListener("keypress",function(e){
+    if(e.key === "Enter"){
+        sendMessage();
+    }
+});
+
+loadContacts();
+
+</script>
+</body>
+</html>
+
